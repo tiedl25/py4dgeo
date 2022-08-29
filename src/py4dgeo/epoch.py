@@ -241,6 +241,42 @@ def _as_tuple(x):
         return x
     return (x,)
 
+def read_cc_params(filename):
+    '''Read the required parameters from a given file out and store them in a dictionary.
+    
+    :param filename: 
+        The filename to read from.
+    :type filename: str
+    
+    :returns:
+        A dictionary containing the required parameters for the m3c2-algorithm.
+    '''
+    dc = {}
+    with open(filename, mode='r') as file:
+        for line in file.readlines():
+            line = line.split('\n')[0] #remove line break   
+            if line != '[General]':
+                line_li = line.split('=')
+                dc.update({line_li[0]:line_li[1]})
+
+    # Orientation
+    # X, -X, Y, -Y, Z, -Z, Barycenter, -Barycenter, Origin, -Origin
+    orientation_mapping = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1], [0,0,1], [0,0,1], [0,0,0], [0,0,0]])
+    prefered_orientation = int(dc['NormalPreferedOri'])
+    if prefered_orientation >5 and prefered_orientation <8: 
+        print(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
+
+    params = {'cyl_radii' : (float(dc['SearchScale'])/2,), 
+                'normal_radii' : (float(dc['NormalScale'])/2,), 
+                'max_distance' : float(dc['SearchDepth']), 
+                'registration_error': float(dc['RegistrationError']),
+                'robust_aggr': dc['UseMedian'],
+                'orientation_vector': orientation_mapping[prefered_orientation]}
+    
+    # Multi-Scale Mode
+    if dc['NormalMode'] == '2': params['normal_radii'] = (float(dc['NormalMinScale']), float(dc['NormalStep']), float(dc['NormalMaxScale']))
+
+    return params
 
 def read_from_xyz(*filenames, other_epoch=None, **parse_opts):
     """Create an epoch from an xyz file
