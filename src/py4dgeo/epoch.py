@@ -261,10 +261,11 @@ def read_cc_params(filename):
 
     # Orientation
     # X, -X, Y, -Y, Z, -Z, Barycenter, -Barycenter, Origin, -Origin
+    # TODO implement barycenter orientation option
     orientation_mapping = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1], [0,0,1], [0,0,1], [0,0,0], [0,0,0]])
     prefered_orientation = int(dc['NormalPreferedOri'])
     if prefered_orientation >5 and prefered_orientation <8: 
-        print(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
+        logger.info(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
 
     params = {'cyl_radii' : (float(dc['SearchScale'])/2,), 
                 'normal_radii' : (float(dc['NormalScale'])/2,), 
@@ -320,7 +321,6 @@ def read_from_xyz(*filenames, other_epoch=None, **parse_opts):
             read_from_xyz(*filenames[1:], other_epoch=new_epoch, **parse_opts)
         )
 
-
 def read_from_las(*filenames, other_epoch=None):
     """Create an epoch from a LAS/LAZ file
 
@@ -362,6 +362,39 @@ def read_from_las(*filenames, other_epoch=None):
             read_from_las(*filenames[1:], other_epoch=new_epoch)
         )
 
+def read(*filenames, other_epoch=None, **parse_opts):
+    '''
+    Handle reading epochs from different file types(ascii and las/laz), so theres no need to change the function when using a different file extension.
+    
+    :param filenames: The path to a point cloud file. Can also handle multiple files.
+    :type filenames: str
+    '''
+    from pathlib import Path
+    extension = Path(filenames[0]).suffix
+    if extension == ".las" or ".laz":
+        return read_from_las(*filenames, other_epoch=other_epoch)
+    elif extension == ".xyz" or ".txt":
+        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//")
+    else:
+        raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
+
+def read_with_magic(*filenames, other_epoch=None, **parse_opts):
+    '''
+    Handle reading epochs from different file types(ascii and las/laz), so theres no need to change the function when using a different file extension.
+    
+    :param filenames: The path to a point cloud file. Can also handle multiple files.
+    :type filenames: str
+    '''
+    import magic #pip install python-magic-bin
+
+    filetype = magic.from_file(filenames[0], mime=True)
+    if filetype == 'application/octet-stream':
+        return read_from_las(*filenames, other_epoch=other_epoch)
+    elif filetype == 'text/plain':
+        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//")
+    else:
+        print("File type has to be ascii or las")
+        os._exit(0)
 
 def normalize_timestamp(timestamp):
     """Bring a given timestamp into a standardized Python format"""
