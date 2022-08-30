@@ -241,44 +241,6 @@ def _as_tuple(x):
         return x
     return (x,)
 
-def read_cc_params(filename):
-    '''Read the required parameters from a given file out and store them in a dictionary.
-    
-    :param filename: 
-        The filename to read from.
-    :type filename: str
-    
-    :returns:
-        A dictionary containing the required parameters for the m3c2-algorithm.
-    '''
-    dc = {}
-    with open(filename, mode='r') as file:
-        for line in file.readlines():
-            line = line.split('\n')[0] #remove line break   
-            if line != '[General]':
-                line_li = line.split('=')
-                dc.update({line_li[0]:line_li[1]})
-
-    # Orientation
-    # X, -X, Y, -Y, Z, -Z, Barycenter, -Barycenter, Origin, -Origin
-    # TODO implement barycenter orientation option
-    orientation_mapping = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1], [0,0,1], [0,0,1], [0,0,0], [0,0,0]])
-    prefered_orientation = int(dc['NormalPreferedOri'])
-    if prefered_orientation >5 and prefered_orientation <8: 
-        logger.info(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
-
-    params = {'cyl_radii' : (float(dc['SearchScale'])/2,), 
-                'normal_radii' : (float(dc['NormalScale'])/2,), 
-                'max_distance' : float(dc['SearchDepth']), 
-                'registration_error': float(dc['RegistrationError']),
-                'robust_aggr': dc['UseMedian'],
-                'orientation_vector': orientation_mapping[prefered_orientation]}
-    
-    # Multi-Scale Mode
-    if dc['NormalMode'] == '2': params['normal_radii'] = (float(dc['NormalMinScale']), float(dc['NormalStep']), float(dc['NormalMaxScale']))
-
-    return params
-
 def read_from_xyz(*filenames, other_epoch=None, **parse_opts):
     """Create an epoch from an xyz file
 
@@ -363,8 +325,7 @@ def read_from_las(*filenames, other_epoch=None):
         )
 
 def read(*filenames, other_epoch=None, **parse_opts):
-    '''
-    Handle reading epochs from different file types(ascii and las/laz), so theres no need to change the function when using a different file extension.
+    '''Handle reading epochs from different file types(ascii and las/laz), so theres no need to change the function when using a different file extension.
     
     :param filenames: The path to a point cloud file. Can also handle multiple files.
     :type filenames: str
@@ -374,7 +335,7 @@ def read(*filenames, other_epoch=None, **parse_opts):
     if extension == ".las" or ".laz":
         return read_from_las(*filenames, other_epoch=other_epoch)
     elif extension == ".xyz" or ".txt":
-        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//")
+        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//", **parse_opts) # comments is set to skip the header if it is present
     else:
         raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
 
@@ -391,10 +352,9 @@ def read_with_magic(*filenames, other_epoch=None, **parse_opts):
     if filetype == 'application/octet-stream':
         return read_from_las(*filenames, other_epoch=other_epoch)
     elif filetype == 'text/plain':
-        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//")
+        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//", **parse_opts) # comments is set to skip the header if it is present
     else:
-        print("File type has to be ascii or las")
-        os._exit(0)
+        raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
 
 def normalize_timestamp(timestamp):
     """Bring a given timestamp into a standardized Python format"""

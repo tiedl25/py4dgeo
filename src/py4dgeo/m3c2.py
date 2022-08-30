@@ -174,6 +174,153 @@ class M3C2(M3C2LikeAlgorithm):
 
         return self.corepoint_normals
 
+    def write_to_xyz(self, filename, distances, uncertainties, cc_mode=False):
+        '''Save the corepoints with it's normals and calculated distance and uncertainties to an xyz-file.
+
+        :param filename:
+            The filename and it's path to where the data gets saved to.
+        :type filename: str
+        :param distances:
+            The calculated m3c2-distances
+        :type distances: numpy.ndarray
+        :param uncertainties:
+            The calculated lodetection, spread1, spread2, num_samples1, num_samples2
+        :type uncertainties: dict
+        :param cc_mode: 
+            Specifies if CC vocabulary gets used instead of py4dgeo vocabulary for the header line
+        :type cc_mode: bool
+        '''
+        with open(filename, mode='w') as file:
+            if cc_mode: file.write("//X Y Z M3C2__distance distance__uncertainty STD_cloud1 STD_cloud2 NormalX NormalY NormalZ\n")
+            else: file.write("//x y z distance lodetection spread1 spread2 nx ny nz\n")
+
+            for i in range(0, np.size(self.corepoints[0])):
+                x,y,z = self.corepoints[i]
+                nx,ny,nz = self.corepoint_normals[i]
+                file.write("{} {} {} {} {} {} {} {} {} {} {} {}\n".format(
+                            str(x), str(y), str(z),
+                            str(distances[i]), str(uncertainties['lodetection'][i]),
+                            str(uncertainties["spread1"][i]), str(uncertainties["spread2"][i]),
+                            str(uncertainties["num_samples1"][i]), str(uncertainties["num_samples2"][i]),
+                            str(nx), str(ny), str(nz)))
+
+    def write_to_las(self, filename, distances, uncertainties, cc_mode=False):
+        '''Save the corepoints with it's normals and calculated distance and uncertainties to a las-file.
+
+        :param filename:
+            The filename and it's path to where the data gets saved to.
+        :type filename: str
+        :param distances:
+            The calculated m3c2-distances
+        :type distances: numpy.ndarray
+        :param uncertainties:
+            The calculated lodetection, spread1, spread2, num_samples1, num_samples2
+        :type uncertainties: dict
+        :param cc_mode: 
+            Specifies if CC vocabulary gets used instead of py4dgeo vocabulary for the header line
+        :type cc_mode: bool
+        '''
+        import laspy
+
+        header = laspy.LasHeader(version="1.4", point_format=6)
+
+        las = laspy.LasData(header)
+
+        las.x = self.corepoints[:, 0]
+        las.y = self.corepoints[:, 1]
+        las.z = self.corepoints[:, 2]
+
+        if cc_mode: keys = ['M3C2__distance', 'distance__uncertainty', 'STD_cloud1', 'STD_cloud2', 'NormalX', 'NormalY', 'NormalZ']
+        else: keys = ['distance', 'lodetection', 'spread1', 'spread2', 'nx', 'ny', 'nz']
+
+        attribute_dict={keys[0] : distances, 
+                        keys[1] : uncertainties["lodetection"], 
+                        keys[2] : self.corepoint_normals[0:,0], 
+                        keys[3] : self.corepoint_normals[0:,1], 
+                        keys[4] : self.corepoint_normals[0:,2], 
+                        keys[5] : uncertainties["spread1"], 
+                        keys[6] : uncertainties["spread2"],
+                        keys[7] : uncertainties["num_samples1"],
+                        keys[8] : uncertainties["num_samples2"]}
+
+        for key,vals in attribute_dict.items():
+            try:
+                las[key] = vals
+            except:
+                las.add_extra_dim(laspy.ExtraBytesParams(
+                    name=key,
+                    type=type(vals[0])
+                    ))
+                las[key] = vals
+
+        las.write(filename)
+
+    def write(self, filename, distances, uncertainties, cc_mode=False):
+        '''
+        Handle writing to different filetypes(ascii and las/laz), so theres no need to change the function when using a different file extension.
+
+        :param filename:
+            The filename and it's path to where the data gets saved to.
+        :type filename: str
+        :param distances:
+            The calculated m3c2-distances
+        :type distances: numpy.ndarray
+        :param uncertainties:
+            The calculated lodetection, spread1, spread2, num_samples1, num_samples2
+        :type uncertainties: dict
+        :param cc_mode: 
+            Specifies if CC vocabulary gets used instead of py4dgeo vocabulary for the header line
+        :type cc_mode: bool
+        '''
+        from pathlib import Path
+        extension = Path(filename).suffix
+        if extension == ".las" or ".laz":
+            self.write_to_las(filename, distances, uncertainties, cc_mode)
+        elif extension == ".xyz" or ".txt":
+            self.write_to_xyz(filename, distances, uncertainties, cc_mode)
+        else:
+            print("File extension has to be las, laz, xyz or txt")
+            quit()
+
     @property
     def name(self):
         return "M3C2"
+
+
+def read_cc_params(filename):
+    '''Read the required parameters from a given file out and store them in a dictionary.
+    
+    :param filename: 
+        The filename to read from.
+    :type filename: str
+    
+    :returns:
+        A dictionary containing the required parameters for the m3c2-algorithm.
+    '''
+    dc = {}
+    with open(filename, mode='r') as file:
+        for line in file.readlines():
+            line = line.split('\n')[0] #remove line break   
+            if line != '[General]':
+                line_li = line.split('=')
+                dc.update({line_li[0]:line_li[1]})
+
+    # Orientation
+    # X, -X, Y, -Y, Z, -Z, Barycenter, -Barycenter, Origin, -Origin
+    # TODO implement barycenter orientation option
+    orientation_mapping = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1], [0,0,1], [0,0,1], [0,0,0], [0,0,0]])
+    prefered_orientation = int(dc['NormalPreferedOri'])
+    if prefered_orientation >5 and prefered_orientation <8: 
+        logger.info(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
+
+    params = {'cyl_radii' : (float(dc['SearchScale'])/2,), 
+                'normal_radii' : (float(dc['NormalScale'])/2,), 
+                'max_distance' : float(dc['SearchDepth']), 
+                'registration_error': float(dc['RegistrationError']),
+                'robust_aggr': dc['UseMedian'],
+                'orientation_vector': orientation_mapping[prefered_orientation]}
+    
+    # Multi-Scale Mode
+    if dc['NormalMode'] == '2': params['normal_radii'] = (float(dc['NormalMinScale']), float(dc['NormalStep']), float(dc['NormalMaxScale']))
+
+    return params
