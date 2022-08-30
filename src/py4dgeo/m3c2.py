@@ -191,10 +191,10 @@ class M3C2(M3C2LikeAlgorithm):
         :type cc_mode: bool
         '''
         with open(filename, mode='w') as file:
-            if cc_mode: file.write("//X Y Z M3C2__distance distance__uncertainty STD_cloud1 STD_cloud2 NormalX NormalY NormalZ\n")
-            else: file.write("//x y z distance lodetection spread1 spread2 nx ny nz\n")
+            if cc_mode: file.write("//X Y Z M3C2__distance distance__uncertainty STD_cloud1 STD_cloud2 Npoints_cloud1 Npoints_cloud2 NormalX NormalY NormalZ\n")
+            else: file.write("//x y z distance lodetection spread1 spread2 num_samples1 num_samples2 nx ny nz\n")
 
-            for i in range(0, np.size(self.corepoints[0])):
+            for i in range(0, np.size(distances)):
                 x,y,z = self.corepoints[i]
                 nx,ny,nz = self.corepoint_normals[i]
                 file.write("{} {} {} {} {} {} {} {} {} {} {} {}\n".format(
@@ -230,18 +230,18 @@ class M3C2(M3C2LikeAlgorithm):
         las.y = self.corepoints[:, 1]
         las.z = self.corepoints[:, 2]
 
-        if cc_mode: keys = ['M3C2__distance', 'distance__uncertainty', 'STD_cloud1', 'STD_cloud2', 'NormalX', 'NormalY', 'NormalZ']
-        else: keys = ['distance', 'lodetection', 'spread1', 'spread2', 'nx', 'ny', 'nz']
+        if cc_mode: keys = ['M3C2__distance', 'distance__uncertainty', 'STD_cloud1', 'STD_cloud2', 'Npoints_cloud1', 'Npoints_cloud2', 'NormalX', 'NormalY', 'NormalZ']
+        else: keys = ['distance', 'lodetection', 'spread1', 'spread2', 'num_samples1', 'num_samples2', 'nx', 'ny', 'nz']
 
         attribute_dict={keys[0] : distances, 
                         keys[1] : uncertainties["lodetection"], 
-                        keys[2] : self.corepoint_normals[0:,0], 
-                        keys[3] : self.corepoint_normals[0:,1], 
-                        keys[4] : self.corepoint_normals[0:,2], 
-                        keys[5] : uncertainties["spread1"], 
-                        keys[6] : uncertainties["spread2"],
-                        keys[7] : uncertainties["num_samples1"],
-                        keys[8] : uncertainties["num_samples2"]}
+                        keys[2] : uncertainties["spread1"], 
+                        keys[3] : uncertainties["spread2"],
+                        keys[4] : uncertainties["num_samples1"],
+                        keys[5] : uncertainties["num_samples2"],
+                        keys[6] : self.corepoint_normals[0:,0], 
+                        keys[7] : self.corepoint_normals[0:,1], 
+                        keys[8] : self.corepoint_normals[0:,2]}
 
         for key,vals in attribute_dict.items():
             try:
@@ -279,8 +279,7 @@ class M3C2(M3C2LikeAlgorithm):
         elif extension == ".xyz" or ".txt":
             self.write_to_xyz(filename, distances, uncertainties, cc_mode)
         else:
-            print("File extension has to be las, laz, xyz or txt")
-            quit()
+            raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
 
     @property
     def name(self):
