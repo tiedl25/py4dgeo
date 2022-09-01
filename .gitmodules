@@ -13,3 +13,6 @@
 [submodule "ext/benchmark"]
 	path = ext/benchmark
 	url = https://github.com/google/benchmark
+[submodule "compare_py4dgeo_cc"]
+	path = compare_py4dgeo_cc
+	url = git@github.com:tiedl25/compare_py4dgeo_cc.git
