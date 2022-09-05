@@ -315,9 +315,10 @@ def read_cc_params(filename):
     params = {'cyl_radii' : (float(dc['SearchScale'])/2,), 
                 'normal_radii' : (float(dc['NormalScale'])/2,), 
                 'max_distance' : float(dc['SearchDepth']), 
-                'registration_error': float(dc['RegistrationError']),
                 'robust_aggr': dc['UseMedian'],
                 'orientation_vector': orientation_mapping[prefered_orientation]}
+    
+    if dc['RegistrationErrorEnabled'] == 'true': params.update({'registration_error': float(dc['RegistrationError'])})
     
     # Multi-Scale Mode
     if dc['NormalMode'] == '2': params['normal_radii'] = (float(dc['NormalMinScale']), float(dc['NormalStep']), float(dc['NormalMaxScale']))
