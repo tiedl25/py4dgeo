@@ -332,9 +332,9 @@ def read(*filenames, other_epoch=None, **parse_opts):
     '''
     from pathlib import Path
     extension = Path(filenames[0]).suffix
-    if extension == ".las" or ".laz":
+    if extension in [".las" , ".laz"]:
         return read_from_las(*filenames, other_epoch=other_epoch)
-    elif extension == ".xyz" or ".txt":
+    elif extension in [".xyz", ".txt"]:
         return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//", **parse_opts) # comments is set to skip the header if it is present
     else:
         raise Py4DGeoError("File extension has to be las, laz, xyz or txt")

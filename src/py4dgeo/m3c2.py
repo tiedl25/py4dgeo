@@ -111,7 +111,6 @@ class M3C2LikeAlgorithm(abc.ABC):
         else:
             return _py4dgeo.mean_stddev_distance
 
-
 class M3C2(M3C2LikeAlgorithm):
     def __init__(
         self,
@@ -255,6 +254,7 @@ class M3C2(M3C2LikeAlgorithm):
 
         las.write(filename)
 
+    # distance and uncertainties are not necessarily needed as parameters, if they get saved in the calculate_distances method
     def write(self, filename, distances, uncertainties, cc_mode=False):
         '''
         Handle writing to different filetypes(ascii and las/laz), so theres no need to change the function when using a different file extension.
@@ -274,9 +274,9 @@ class M3C2(M3C2LikeAlgorithm):
         '''
         from pathlib import Path
         extension = Path(filename).suffix
-        if extension == ".las" or ".laz":
+        if extension in [".las", ".laz"]:
             self.write_to_las(filename, distances, uncertainties, cc_mode)
-        elif extension == ".xyz" or ".txt":
+        elif extension in [".xyz", ".txt"]:
             self.write_to_xyz(filename, distances, uncertainties, cc_mode)
         else:
             raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
@@ -310,7 +310,7 @@ def read_cc_params(filename):
     orientation_mapping = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1], [0,0,1], [0,0,1], [0,0,0], [0,0,0]])
     prefered_orientation = int(dc['NormalPreferedOri'])
     if prefered_orientation >5 and prefered_orientation <8: 
-        logger.info(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
+        logger.warning(f"Orientation vector is set to Z due to a CC prefered orientation of '{prefered_orientation}', which isn't implemented yet")
 
     params = {'cyl_radii' : (float(dc['SearchScale'])/2,), 
                 'normal_radii' : (float(dc['NormalScale'])/2,), 
