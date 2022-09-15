@@ -339,23 +339,6 @@ def read(*filenames, other_epoch=None, **parse_opts):
     else:
         raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
 
-def read_with_magic(*filenames, other_epoch=None, **parse_opts):
-    '''
-    Handle reading epochs from different file types(ascii and las/laz), so theres no need to change the function when using a different file extension.
-    
-    :param filenames: The path to a point cloud file. Can also handle multiple files.
-    :type filenames: str
-    '''
-    import magic #pip install python-magic-bin
-
-    filetype = magic.from_file(filenames[0], mime=True)
-    if filetype == 'application/octet-stream':
-        return read_from_las(*filenames, other_epoch=other_epoch)
-    elif filetype == 'text/plain':
-        return read_from_xyz(*filenames, other_epoch=other_epoch, comments="//", **parse_opts) # comments is set to skip the header if it is present
-    else:
-        raise Py4DGeoError("File extension has to be las, laz, xyz or txt")
-
 def normalize_timestamp(timestamp):
     """Bring a given timestamp into a standardized Python format"""
 

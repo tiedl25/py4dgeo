@@ -285,7 +285,6 @@ class M3C2(M3C2LikeAlgorithm):
     def name(self):
         return "M3C2"
 
-
 def read_cc_params(filename):
     '''Read the required parameters from a given file out and store them in a dictionary.
     
@@ -321,6 +320,6 @@ def read_cc_params(filename):
     if dc['RegistrationErrorEnabled'] == 'true': params.update({'registration_error': float(dc['RegistrationError'])})
     
     # Multi-Scale Mode
-    if dc['NormalMode'] == '2': params['normal_radii'] = (float(dc['NormalMinScale']), float(dc['NormalStep']), float(dc['NormalMaxScale']))
+    if dc['NormalMode'] == '2': params['normal_radii'] = (float(dc['NormalMinScale'])/2, float(dc['NormalStep'])/2, float(dc['NormalMaxScale'])/2)
 
     return params
